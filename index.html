@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Copper Value Calculator</title>
+<meta name="description" content="Should a miner build a vanadium reductive-leach plant or sell concentrate to a smelter? Live process model, economics, carbon and risk.">
+<meta name="theme-color" content="#0C0D0E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23D9824A%27/%3E%3Ctext x=%2716%27 y=%2722%27 font-family=%27Arial%27 font-weight=%27700%27 font-size=%2715%27 fill=%27%230C0D0E%27 text-anchor=%27middle%27%3ECu%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@300..500&display=swap">
+<style>
+/* Design read: engineering decision tool for a technical interview panel. Dark, photographic, industrial.
+   Dials: variance 6, motion 5, density 4. One theme (dark), one accent (copper).
+   Shape rule: panels 16px, inputs 10px, buttons and tabs full pill. */
+:root {
+  color-scheme: dark;
+  --bg: #0C0D0E;
+  --surface: #131517;
+  --surface-2: #1A1D20;
+  --surface-3: #22262A;
+  --line: rgba(255, 255, 255, .08);
+  --line-2: rgba(255, 255, 255, .14);
+  --ink: #EDEEEF;
+  --ink-2: #A9AEB3;
+  --muted: #737A80;
+  --copper: #D9824A;
+  --copper-hi: #E89A66;
+  --copper-lo: #B8693A;
+  --copper-wash: rgba(217, 130, 74, .12);
+  --data-2: #4E555B;
+  --v2: #A58BDB;
+  --v2-wash: rgba(165, 139, 219, .12);
+  --v3: #62B887;
+  --cu2: #6EA6E6;
+  --good: #5CC994;
+  --bad: #F0735F;
+  --sans: "Geist", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --r-panel: 16px;
+  --r-input: 10px;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; margin: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+.wrap { max-width: 1200px; margin-inline: auto; padding-inline: 24px; }
+h1, h2, h3, h4 { margin: 0; text-wrap: balance; font-weight: 600; letter-spacing: -.02em; }
+p { margin: 0; text-wrap: pretty; }
+a { color: var(--copper-hi); text-underline-offset: 3px; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--copper); outline-offset: 3px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.skip { position: absolute; left: 16px; top: -60px; background: var(--copper); color: var(--bg); padding: 10px 16px; border-radius: 999px; z-index: 30; text-decoration: none; font-weight: 600; transition: top .2s var(--ease); }
+.skip:focus { top: 12px; color: var(--bg); }
+
+/* ---------- nav ---------- */
+.nav { position: sticky; top: 0; z-index: 20; background: rgba(12, 13, 14, .72); backdrop-filter: saturate(140%) blur(14px); -webkit-backdrop-filter: saturate(140%) blur(14px); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+.mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(145deg, var(--copper-hi), var(--copper-lo)); color: var(--bg); display: grid; place-items: center; font-weight: 700; font-size: 14px; letter-spacing: -.02em; box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+.brand b { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
+.brand .tagline { color: var(--muted); font-size: 14px; margin-left: 4px; }
+.nav-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.select { appearance: none; -webkit-appearance: none; background-color: var(--surface-2); color: var(--ink); border: 1px solid var(--line-2); border-radius: 999px; padding: 8px 36px 8px 14px; font-size: 14px; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23A9AEB3' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; transition: border-color .2s var(--ease), background-color .2s var(--ease); max-width: 100%; text-overflow: ellipsis; }
+.select:hover { border-color: rgba(255,255,255,.28); background-color: var(--surface-3); }
+.btn-text { background: none; border: 0; color: var(--ink-2); font-size: 14px; padding: 8px 12px; border-radius: 999px; cursor: pointer; transition: color .2s var(--ease), background-color .2s var(--ease); }
+.btn-text:hover { color: var(--ink); background: var(--surface-2); }
+.btn-text:active { transform: translateY(1px); }
+
+/* ---------- hero ---------- */
+.hero { position: relative; isolation: isolate; overflow: hidden; min-height: 600px; display: flex; align-items: flex-end; padding-block: 96px 168px; }
+.hero-img { position: absolute; inset: 0; z-index: -2; background: url("img/tankhouse.jpg") center 40% / cover no-repeat; transform-origin: 70% 40%; }
+@media (prefers-reduced-motion: no-preference) { .hero-img { animation: drift 28s ease-in-out infinite alternate; } }
+@keyframes drift { from { transform: scale(1.04); } to { transform: scale(1.12) translateX(-1.5%); } }
+.hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background:
+  linear-gradient(90deg, rgba(12,13,14,.96) 0%, rgba(12,13,14,.86) 34%, rgba(12,13,14,.35) 68%, rgba(12,13,14,.15) 100%),
+  linear-gradient(0deg, var(--bg) 0%, rgba(12,13,14,0) 42%); }
+.hero .wrap { width: 100%; }
+.hero-copy { max-width: 620px; display: grid; gap: 20px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--copper-hi); }
+.verdict { font-size: clamp(48px, 6.4vw, 84px); line-height: 1.0; letter-spacing: -.045em; font-weight: 600; }
+.verdict .em { color: var(--copper); }
+.hero-sub { font-size: 19px; line-height: 1.5; color: var(--ink-2); max-width: 44ch; }
+.hero-sub b { color: var(--ink); font-weight: 600; }
+.hero-cta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; border-radius: 999px; padding: 13px 22px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; cursor: pointer; border: 0; transition: transform .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease); white-space: nowrap; }
+.btn.primary { background: var(--copper); color: #160C05; box-shadow: 0 8px 28px -10px rgba(217,130,74,.7), inset 0 1px 0 rgba(255,255,255,.3); }
+.btn.primary:hover { background: var(--copper-hi); transform: translateY(-1px); color: #160C05; }
+.btn.primary:active { transform: translateY(1px) scale(.99); }
+.btn.ghost { background: rgba(255,255,255,.06); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+.btn.ghost:hover { background: rgba(255,255,255,.1); color: var(--ink); }
+.btn .arr { transition: transform .2s var(--ease); }
+.btn:hover .arr { transform: translateX(3px); }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-copy > * { animation: rise .8s var(--ease) both; }
+  .hero-copy > :nth-child(2) { animation-delay: .06s; } .hero-copy > :nth-child(3) { animation-delay: .12s; } .hero-copy > :nth-child(4) { animation-delay: .18s; }
+  .results { animation: rise .9s var(--ease) .22s both; }
+}
+@keyframes rise { from { opacity: .001; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* ---------- results panel (overlaps hero) ---------- */
+.results { position: relative; z-index: 2; margin-top: -112px; background: linear-gradient(180deg, rgba(26,29,32,.92), rgba(19,21,23,.96)); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--line-2); border-radius: var(--r-panel); box-shadow: 0 30px 80px -30px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.06); display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+.meter-wrap { padding: 28px 32px 26px; border-right: 1px solid var(--line); display: grid; gap: 6px; align-content: start; }
+.meter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.meter-head h2 { font-size: 15px; font-weight: 500; letter-spacing: -.01em; color: var(--ink-2); }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--muted); }
+.sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.sw.sell { background: var(--data-2); } .sw.build { background: var(--copper); }
+.meter { overflow-x: clip; overflow-y: visible; padding-top: 6px; }
+.track { position: relative; height: 44px; margin-top: 26px; }
+.zone { position: absolute; top: 14px; height: 12px; }
+.zone.sell { left: 0; background: var(--surface-3); border-radius: 999px 0 0 999px; }
+.zone.build { right: 0; background: linear-gradient(90deg, var(--copper-lo), var(--copper-hi)); border-radius: 0 999px 999px 0; }
+.mk { position: absolute; inset: 0; pointer-events: none; transition: transform .45s var(--ease); }
+.mk i { position: absolute; left: 0; top: 4px; width: 2px; height: 32px; border-radius: 2px; background: var(--ink); transform: translateX(-1px); box-shadow: 0 0 0 3px var(--surface); }
+.mk span { position: absolute; left: 0; top: 40px; transform: translateX(var(--lx, -50%)); font-family: var(--mono); font-size: 12px; white-space: nowrap; color: var(--ink); }
+.mk.be i { background: var(--copper-hi); top: 0; height: 26px; }
+.mk.be span { top: -22px; color: var(--copper-hi); }
+.ticks { position: relative; height: 18px; margin-top: 20px; }
+.ticks span { position: absolute; top: 0; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.ticks span.first { transform: none; } .ticks span.last { transform: translateX(-100%); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; }
+.stat { padding: 22px 26px; display: grid; gap: 4px; align-content: start; }
+.stat:nth-child(odd) { border-right: 1px solid var(--line); }
+.stat:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+.stat .k { font-size: 13px; color: var(--muted); }
+.stat .v { font-family: var(--mono); font-weight: 400; font-size: clamp(24px, 2.4vw, 30px); line-height: 1.15; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: 13px; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+.stat .d { font-size: 13px; color: var(--muted); }
+
+/* ---------- compare ---------- */
+.compare { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding: 14px 20px; border-radius: var(--r-panel); background: var(--copper-wash); box-shadow: inset 0 0 0 1px rgba(217,130,74,.3); margin-top: 16px; font-size: 14px; }
+.compare[hidden] { display: none; }
+.compare .it { display: grid; }
+.compare .it .k { font-size: 12px; color: var(--muted); }
+
+/* ---------- sections ---------- */
+.section { padding-top: 112px; scroll-margin-top: 72px; }
+.sec-head { display: grid; gap: 10px; margin-bottom: 32px; max-width: 640px; }
+.sec-head h2 { font-size: clamp(30px, 3.4vw, 42px); line-height: 1.08; letter-spacing: -.035em; }
+.sec-head p { color: var(--ink-2); font-size: 17px; }
+
+/* controls */
+.controls { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 32px 32px 0; }
+.sliders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 44px; padding-bottom: 32px; }
+.ctl { display: grid; gap: 6px; align-content: start; }
+.ctl .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.ctl label { font-size: 14px; color: var(--ink-2); }
+.ctl output { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; transition: color .2s var(--ease); }
+.ctl .hint { font-size: 12.5px; color: var(--muted); }
+.ctl .select { width: 100%; height: 40px; border-radius: var(--r-input); }
+.ctl.changed output { color: var(--copper-hi); }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 40px; background: transparent; cursor: pointer; margin: 0; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(to right, var(--copper) 0 var(--pct, 50%), var(--surface-3) var(--pct, 50%) 100%); }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 999px; background: var(--surface-3); }
+input[type=range]::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--copper); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); margin-top: -7px; box-shadow: 0 0 0 4px rgba(217,130,74,.0), 0 2px 8px rgba(0,0,0,.5); transition: box-shadow .2s var(--ease), transform .2s var(--ease); }
+input[type=range]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(217,130,74,.22), 0 2px 8px rgba(0,0,0,.5); }
+input[type=range]:active::-webkit-slider-thumb { transform: scale(1.1); background: var(--copper-hi); }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: var(--ink); }
+details.more { border-top: 1px solid var(--line); margin-inline: -32px; padding-inline: 32px; }
+details.more > summary { list-style: none; cursor: pointer; padding-block: 18px; font-size: 14px; color: var(--ink-2); display: flex; gap: 10px; align-items: center; transition: color .2s var(--ease); }
+details.more > summary:hover { color: var(--ink); }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: "+"; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); font-family: var(--mono); font-size: 13px; color: var(--ink); }
+details.more[open] > summary::before { content: "−"; }
+details.more > summary .cnt { color: var(--muted); }
+.adv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px 44px; padding-bottom: 32px; }
+.adv h4 { margin: 0 0 10px; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.adv .f { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-block: 3px; font-size: 13px; color: var(--ink-2); min-width: 0; }
+.adv .f label { min-width: 0; }
+.adv .f.changed label { color: var(--copper-hi); }
+.adv .box { display: flex; align-items: center; gap: 6px; flex: none; }
+.adv input, .adv select { width: 84px; border: 1px solid var(--line); border-radius: 8px; background-color: var(--surface-2); padding: 5px 8px; font-family: var(--mono); font-size: 12.5px; text-align: right; transition: border-color .2s var(--ease); }
+.adv input:hover, .adv select:hover { border-color: var(--line-2); }
+.adv input:focus { outline: none; border-color: var(--copper); }
+.adv select { width: 140px; font-family: var(--sans); text-align: left; }
+.adv .u { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 50px; }
+.adv .tag { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-left: 4px; }
+
+/* tabs */
+.tablist { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.tab { border: 0; background: none; padding: 9px 18px; font-size: 14px; font-weight: 500; color: var(--ink-2); cursor: pointer; border-radius: 999px; white-space: nowrap; transition: color .2s var(--ease), background-color .2s var(--ease); }
+.tab:hover { color: var(--ink); background: var(--surface-2); }
+.tab[aria-selected="true"] { color: #160C05; background: var(--copper); }
+.panel { padding-top: 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+.panel > *, .card, .blk { min-width: 0; }
+.panel[hidden] { display: none; }
+.lead { font-size: 19px; color: var(--ink-2); max-width: 60ch; line-height: 1.55; }
+.lead b { color: var(--ink); font-weight: 600; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; }
+.blk h3 { font-size: 17px; font-weight: 600; letter-spacing: -.015em; margin-bottom: 18px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.blk h3 .sub { font-size: 13px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 28px; }
+
+/* feed split (flowsheet tab) */
+.feed { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); overflow: hidden; }
+.feed-copy { padding: 36px; display: grid; gap: 16px; align-content: center; }
+.feed-copy h3 { font-size: 26px; line-height: 1.15; letter-spacing: -.03em; }
+.feed-copy p { color: var(--ink-2); font-size: 16px; }
+.feed-copy p b { color: var(--ink); font-weight: 600; }
+.feed-img { min-height: 300px; background: #000 url("img/chalcopyrite.jpg") center / cover no-repeat; }
+.figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 4px; }
+.fig .v { font-family: var(--mono); font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.fig .v small { font-size: 12px; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+.fig .k { font-size: 13px; color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); margin-top: 14px; max-width: 80ch; }
+
+/* economics banner */
+.banner { position: relative; isolation: isolate; border-radius: var(--r-panel); overflow: hidden; min-height: 260px; display: flex; align-items: flex-end; padding: 32px; border: 1px solid var(--line); }
+.banner::before { content: ""; position: absolute; inset: 0; z-index: -2; background: url("img/cathodes.jpg") center 62% / cover no-repeat; }
+.banner::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(12,13,14,.95) 0%, rgba(12,13,14,.55) 55%, rgba(12,13,14,.15) 100%); }
+.banner .lead { color: #D4D7DA; max-width: 58ch; }
+
+/* flowsheet */
+.flow-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 20px; }
+.flow { width: 100%; min-width: 820px; height: auto; display: block; }
+.flow .box { fill: var(--surface-2); stroke: var(--line-2); stroke-width: 1; }
+.flow .box.v { fill: rgba(165,139,219,.14); stroke: var(--v2); }
+.flow .box.cu { fill: var(--surface-2); stroke: rgba(110,166,230,.6); }
+.flow .box.cath { fill: var(--copper); stroke: var(--copper); }
+.flow .box.side { fill: var(--surface); stroke: var(--line-2); stroke-dasharray: 3 3; }
+.flow .t1 { font-size: 13.5px; font-weight: 600; fill: var(--ink); font-family: var(--sans); }
+.flow .t2 { font-size: 11px; fill: var(--muted); font-family: var(--mono); }
+.flow .tc { fill: #160C05; }
+.flow .lbl { font-size: 11px; fill: var(--muted); font-family: var(--mono); }
+.flow .lbl.v2 { fill: var(--v2); } .flow .lbl.v3 { fill: var(--v3); }
+.flow .ln { fill: none; stroke: #5A6167; stroke-width: 1.5; }
+.flow .ln.v2 { stroke: var(--v2); stroke-width: 2.5; }
+.flow .ln.v3 { stroke: var(--v3); stroke-width: 2.5; }
+.flow .ln.cu { stroke: var(--cu2); stroke-width: 2.5; }
+.flow .ah { fill: #5A6167; } .flow .ah.v2 { fill: var(--v2); } .flow .ah.v3 { fill: var(--v3); } .flow .ah.cu { fill: var(--cu2); }
+@media (prefers-reduced-motion: no-preference) { .flow .ln.v2, .flow .ln.v3, .flow .ln.cu { stroke-dasharray: 6 5; animation: flowdash 1.4s linear infinite; } }
+@keyframes flowdash { to { stroke-dashoffset: -22; } }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12.5px; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line-2); }
+td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; padding-right: 0; }
+th.n { font-family: var(--sans); }
+tr.tot td { font-weight: 600; border-bottom: 0; border-top: 1px solid var(--line-2); }
+tr.tot td.n { font-weight: 500; }
+.ledger td:first-child { color: var(--ink-2); }
+.ok { font-family: var(--mono); font-size: 13px; color: var(--good); }
+details.plain > summary { cursor: pointer; font-size: 14px; color: var(--ink-2); list-style: none; padding-block: 6px; display: inline-flex; gap: 10px; align-items: center; transition: color .2s var(--ease); }
+details.plain > summary:hover { color: var(--ink); }
+details.plain > summary::-webkit-details-marker { display: none; }
+details.plain > summary::before { content: "+"; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); font-family: var(--mono); font-size: 13px; color: var(--ink); }
+details.plain[open] > summary::before { content: "−"; }
+details.plain[open] > summary { margin-bottom: 20px; }
+
+/* bars */
+.bars { display: grid; gap: 14px; }
+.bar { display: grid; grid-template-columns: minmax(110px, 200px) minmax(0, 1fr) 64px; gap: 14px; align-items: center; font-size: 14px; }
+.bar .lab { color: var(--ink-2); }
+.bar .track2 { height: 6px; position: relative; }
+.bar .fill { position: absolute; inset: 0 auto 0 0; background: var(--data-2); border-radius: 999px; min-width: 4px; }
+.bar .fill.c { background: linear-gradient(90deg, var(--copper-lo), var(--copper-hi)); }
+.bar .val { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+
+.heat-box { position: relative; height: 380px; }
+.heat-box canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+.heat-tip { position: absolute; left: 0; top: 0; pointer-events: none; background: var(--surface-3); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 12px; font-family: var(--mono); font-size: 12px; color: var(--ink-2); white-space: nowrap; box-shadow: 0 10px 30px -10px rgba(0,0,0,.7); }
+.heat-tip b { color: var(--ink); font-weight: 500; }
+.marks { position: relative; height: 18px; margin-top: -8px; }
+.marks span { position: absolute; left: calc(9px + (100% - 18px) * var(--p)); transform: translateX(-50%); top: 6px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.marks span::before { content: ""; position: absolute; left: 50%; top: -7px; width: 1px; height: 5px; background: var(--muted); }
+.chart-box { position: relative; height: 300px; }
+.chart-box.tall { height: 360px; }
+.chart-box.bridge { height: 380px; }
+.p-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.p-row > div { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; display: grid; }
+.p-row .k { font-size: 12.5px; color: var(--muted); }
+.p-row .v { font-family: var(--mono); font-size: 20px; letter-spacing: -.02em; }
+.key { display: flex; gap: 20px; font-size: 13px; color: var(--ink-2); margin-top: 14px; flex-wrap: wrap; }
+.key i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+
+/* method */
+.eqs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.eq { padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.eq code { font-family: var(--mono); font-size: 13px; display: block; white-space: pre-wrap; color: var(--ink); }
+.eq span { font-size: 13px; color: var(--muted); }
+ol.refs { margin: 0; padding-left: 22px; font-size: 14px; display: grid; gap: 8px; color: var(--ink-2); }
+.scope { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--copper); border-radius: 12px; padding: 22px 26px; color: var(--ink-2); max-width: 82ch; display: grid; gap: 10px; }
+.scope b { color: var(--ink); font-weight: 600; }
+.badge { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 999px; }
+.badge.a { background: var(--copper-wash); color: var(--copper-hi); }
+.badge.s { background: var(--surface-3); color: var(--ink-2); }
+
+footer { margin-top: 120px; border-top: 1px solid var(--line); padding-block: 28px 48px; font-size: 13px; color: var(--muted); }
+footer .wrap { display: grid; gap: 10px; }
+footer .row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+footer a { color: var(--ink-2); }
+
+/* ---------- presenting mode: larger type, fewer controls, for screen-sharing ---------- */
+.present-btn[aria-pressed="true"] { background: var(--copper); color: #160C05; }
+.present-btn[aria-pressed="true"]:hover { background: var(--copper-hi); color: #160C05; }
+html.presenting body { font-size: 18px; }
+html.presenting .skip, html.presenting details.more, html.presenting .compare, html.presenting footer, html.presenting .brand .tagline { display: none !important; }
+html.presenting .controls { padding-bottom: 4px; }
+html.presenting .hero { min-height: calc(100dvh - 64px); }
+html.presenting .eyebrow { font-size: 14px; }
+html.presenting .verdict { font-size: clamp(56px, 8vw, 112px); }
+html.presenting .hero-sub { font-size: 24px; max-width: 40ch; }
+html.presenting .btn { font-size: 17px; padding: 15px 26px; }
+html.presenting .meter-head h2 { font-size: 18px; }
+html.presenting .legend, html.presenting .stat .k, html.presenting .stat .d { font-size: 15px; }
+html.presenting .stat .v { font-size: clamp(30px, 3.2vw, 42px); }
+html.presenting .ticks span, html.presenting .mk span { font-size: 14px; }
+html.presenting .sec-head h2 { font-size: clamp(36px, 4.2vw, 54px); }
+html.presenting .sec-head p { font-size: 20px; }
+html.presenting .ctl label { font-size: 16px; }
+html.presenting .ctl output { font-size: 19px; }
+html.presenting .ctl .hint { font-size: 14px; }
+html.presenting .marks span { font-size: 12px; }
+html.presenting .tab { font-size: 16px; padding: 11px 22px; }
+html.presenting .lead { font-size: 23px; }
+html.presenting .feed-copy h3 { font-size: 32px; }
+html.presenting .feed-copy p { font-size: 19px; }
+html.presenting .blk h3 { font-size: 20px; }
+html.presenting .blk h3 .sub, html.presenting .note, html.presenting .key { font-size: 15px; }
+html.presenting table, html.presenting .bar { font-size: 16px; }
+html.presenting .fig .v { font-size: 32px; }
+html.presenting .fig .k { font-size: 15px; }
+html.presenting .p-row .v { font-size: 24px; }
+html.presenting .chart-box { height: 360px; }
+html.presenting .chart-box.tall { height: 440px; }
+html.presenting .chart-box.bridge, html.presenting .heat-box { height: 460px; }
+html.presenting .heat-tip { font-size: 14px; }
+
+@media (max-width: 960px) {
+  .results { grid-template-columns: 1fr; }
+  .meter-wrap { border-right: 0; border-bottom: 1px solid var(--line); }
+  .sliders, .adv { grid-template-columns: 1fr 1fr; }
+  .two, .feed { grid-template-columns: 1fr; }
+  .figs { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .wrap { padding-inline: 16px; }
+  .heat-box { height: 320px; }
+  .brand .tagline, .brand b { display: none; }
+  .present-btn { display: none; }
+  .nav .select { max-width: 62vw; }
+  .hero { min-height: 560px; padding-block: 72px 140px; }
+  .hero::before { background: linear-gradient(0deg, var(--bg) 8%, rgba(12,13,14,.82) 60%, rgba(12,13,14,.55) 100%); }
+  .hero-sub { font-size: 17px; }
+  .meter-wrap { padding: 22px 18px; }
+  .stat { padding: 18px; }
+  .controls { padding: 24px 18px 0; }
+  details.more { margin-inline: -18px; padding-inline: 18px; }
+  .sliders, .adv, .eqs { grid-template-columns: 1fr; }
+  .bar { grid-template-columns: minmax(90px, 120px) minmax(0, 1fr) 58px; }
+  .feed-copy { padding: 24px; }
+  .banner { padding: 22px; }
+  .section { padding-top: 80px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<a class="skip" href="#detail">Skip to details</a>
+<nav class="nav" aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="mark" aria-hidden="true">Cu</span><b>Copper Value Calculator</b><span class="tagline">Independent study</span></a>
+    <div class="nav-right">
+      <label for="caseSel" class="visually-hidden" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Example case</label>
+      <select id="caseSel" class="select" name="case" autocomplete="off"></select>
+      <button class="btn-text present-btn" id="presentBtn" type="button" aria-pressed="false" title="Presenting mode (P)">Present</button>
+      <button class="btn-text" id="resetBtn" type="button">Reset</button>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <header class="hero">
+    <div class="hero-img" role="img" aria-label="Copper electrowinning tankhouse, workers lifting a cathode sheet"></div>
+    <div class="wrap">
+      <div class="hero-copy" aria-live="polite">
+        <p class="eyebrow">Build the plant or sell the concentrate?</p>
+        <h1 class="verdict" id="verdictWord">Calculating…</h1>
+        <p class="hero-sub" id="verdictText"></p>
+        <div class="hero-cta">
+          <a class="btn primary" href="#controls">Adjust the case <span class="arr" aria-hidden="true">→</span></a>
+          <a class="btn ghost" href="#econ">See the economics</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <section class="results" aria-label="Results">
+      <div class="meter-wrap">
+        <div class="meter-head"><h2>Where the smelter charge sits today</h2><span class="legend"><span><i class="sw sell"></i>sell wins</span><span><i class="sw build"></i>plant wins</span></span></div>
+        <div class="meter" aria-hidden="true">
+          <div class="track">
+            <div class="zone sell" id="zSell"></div><div class="zone build" id="zBuild"></div>
+            <div class="mk be" id="mkBE"><i></i><span id="mkBEL"></span></div>
+            <div class="mk" id="mkToday"><i></i><span id="mkTodayL"></span></div>
+          </div>
+          <div class="ticks" id="ticks"></div>
+        </div>
+        <p class="note" style="margin-top:6px">TC-equivalent, $ per dry tonne of concentrate</p>
+      </div>
+      <div class="stats" id="stats"></div>
+    </section>
+    <div class="compare" id="compare" hidden></div>
+
+    <section class="section" id="controls" aria-labelledby="ctlTitle">
+      <div class="sec-head">
+        <h2 id="ctlTitle">Adjust the case</h2>
+        <p>Six inputs drive most of the answer. Everything else sits under more assumptions.</p>
+      </div>
+      <div class="controls">
+        <div class="sliders" id="sliders"></div>
+        <details class="more" id="more">
+          <summary>More assumptions <span class="cnt" id="moreCnt"></span><button class="btn-text" id="saveA" type="button" style="margin-left:auto">Pin as case A</button></summary>
+          <div class="adv" id="adv"></div>
+        </details>
+      </div>
+    </section>
+
+    <section class="section" id="detail" aria-labelledby="detTitle">
+      <div class="sec-head">
+        <h2 id="detTitle">How the answer is built</h2>
+        <p>Process model, economics, carbon and risk, all from the same inputs.</p>
+      </div>
+      <div class="tablist" role="tablist" aria-label="Detail">
+        <button class="tab" role="tab" id="t-flow" aria-controls="p-flow" aria-selected="true">Flowsheet</button>
+        <button class="tab" role="tab" id="t-econ" aria-controls="p-econ" aria-selected="false">Economics</button>
+        <button class="tab" role="tab" id="t-co2" aria-controls="p-co2" aria-selected="false">Carbon</button>
+        <button class="tab" role="tab" id="t-risk" aria-controls="p-risk" aria-selected="false">Risk</button>
+        <button class="tab" role="tab" id="t-method" aria-controls="p-method" aria-selected="false">Method</button>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-flow" aria-labelledby="t-flow">
+        <div class="feed">
+          <div class="feed-copy">
+            <h3>Chalcopyrite holds most of the world's copper, and it resists leaching.</h3>
+            <p>Vanadium(II) reduces it to chalcocite at room temperature. A ferric leach then dissolves the copper, and SX-EW plates cathode. An electrolyzer recharges the vanadium, so <b>electricity, not heat, drives the process</b>.</p>
+          </div>
+          <div class="feed-img" role="img" aria-label="Chalcopyrite mineral specimen"></div>
+        </div>
+        <div class="flow-wrap">
+          <svg class="flow" viewBox="0 0 1000 330" role="img" aria-label="Flowsheet: concentrate, reductive leach with vanadium regeneration loop, ferric leach, washing, solvent extraction, electrowinning, cathode">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ahv2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="ah v2" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ahv3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="ah v3" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ahcu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="ah cu" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+          <path class="ln v2" d="M214 94 V146" marker-end="url(#ahv2)"/>
+          <path class="ln v3" d="M258 146 V94" marker-end="url(#ahv3)"/>
+          <text class="lbl v2" x="207" y="125" text-anchor="end">V²⁺</text>
+          <text class="lbl v3" x="265" y="125">V³⁺</text>
+          <path class="ln" d="M130 176 H162" marker-end="url(#ah)"/>
+          <path class="ln" d="M310 176 H342" marker-end="url(#ah)"/>
+                    <path class="ln" d="M490 176 H522" marker-end="url(#ah)"/>
+          <path class="ln cu" d="M640 176 H672" marker-end="url(#ahcu)"/>
+                    <path class="ln cu" d="M770 176 H802" marker-end="url(#ahcu)"/>
+          <path class="ln" d="M900 176 H912" marker-end="url(#ah)"/>
+          <path class="ln" d="M236 206 V252" marker-end="url(#ah)"/>
+          <text class="lbl" x="243" y="234">H₂S</text>
+          <path class="ln" d="M416 206 V252" marker-end="url(#ah)"/>
+          <text class="lbl" x="423" y="234">Fe²⁺</text>
+          <path class="ln" d="M581 206 V252" marker-end="url(#ah)"/>
+          <text class="lbl" x="588" y="234">solids</text>
+          <rect class="box" x="16" y="146" width="114" height="60" rx="8"/><text class="t1" x="73" y="171" text-anchor="middle">Concentrate</text><text class="t2" id="fs_conc" x="73" y="190" text-anchor="middle"></text>
+          <rect class="box v" x="166" y="32" width="144" height="62" rx="8"/><text class="t1" x="238" y="58" text-anchor="middle">V²⁺ electrolyzer</text><text class="t2" id="fs_vcell" x="238" y="77" text-anchor="middle"></text>
+          <rect class="box v" x="166" y="146" width="144" height="60" rx="8"/><text class="t1" x="238" y="171" text-anchor="middle">Reductive leach</text><text class="t2" id="fs_red" x="238" y="190" text-anchor="middle"></text>
+          <rect class="box" x="346" y="146" width="144" height="60" rx="8"/><text class="t1" x="418" y="171" text-anchor="middle">Ferric leach</text><text class="t2" id="fs_ox" x="418" y="190" text-anchor="middle"></text>
+          <rect class="box" x="526" y="146" width="114" height="60" rx="8"/><text class="t1" x="583" y="171" text-anchor="middle">Wash (CCD)</text><text class="t2" id="fs_ccd" x="583" y="190" text-anchor="middle"></text>
+          <rect class="box cu" x="676" y="146" width="94" height="60" rx="8"/><text class="t1" x="723" y="171" text-anchor="middle">SX</text><text class="t2" x="723" y="190" text-anchor="middle">extract Cu²⁺</text>
+          <rect class="box cu" x="806" y="146" width="94" height="60" rx="8"/><text class="t1" x="853" y="171" text-anchor="middle">EW</text><text class="t2" id="fs_ew" x="853" y="190" text-anchor="middle"></text>
+          <rect class="box cath" x="916" y="146" width="78" height="60" rx="8"/><text class="t1 tc" x="955" y="171" text-anchor="middle">Cathode</text><text class="t2 tc" id="fs_cath" x="955" y="190" text-anchor="middle"></text>
+          <rect class="box side" x="166" y="256" width="144" height="56" rx="8"/><text class="t1" x="238" y="280" text-anchor="middle">Sulfur recovery</text><text class="t2" id="fs_sru" x="238" y="298" text-anchor="middle"></text>
+          <rect class="box side" x="346" y="256" width="144" height="56" rx="8"/><text class="t1" x="418" y="280" text-anchor="middle">Fe bleed + lime</text><text class="t2" id="fs_fe" x="418" y="298" text-anchor="middle"></text>
+          <rect class="box side" x="526" y="256" width="144" height="56" rx="8"/><text class="t1" x="598" y="280" text-anchor="middle">Residue → Au, Ag</text><text class="t2" id="fs_res" x="598" y="298" text-anchor="middle"></text>
+        </svg>
+        </div>
+        <div class="figs" id="procFigs"></div>
+        <details class="plain">
+          <summary>Show mass, charge and electrical balance</summary>
+          <div class="two">
+            <div class="blk"><h3>Element balance <span class="sub">t/yr, closure = out ÷ in</span></h3><div class="tbl-wrap"><table id="balTbl"></table></div></div>
+            <div class="blk"><h3>Electrical duty <span class="sub">I = ṁ·n·F / (M·CE)</span></h3><div class="tbl-wrap"><table id="elecTbl"></table></div><p class="note" id="elecNote"></p></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-econ" aria-labelledby="t-econ" hidden>
+        <div class="banner"><p class="lead" id="econLead"></p></div>
+        <div class="card"><div class="blk"><h3>Why the plant gains or loses against selling <span class="sub">$M per year, before CAPEX</span></h3><div class="chart-box bridge"><canvas id="bridgeChart" aria-label="Bridge from selling concentrate to building the plant"></canvas></div>
+          <div class="key"><span><i style="background:var(--copper)"></i>in favour of the plant</span><span><i style="background:var(--data-2)"></i>against the plant</span><span><i style="background:var(--ink)"></i>net difference</span></div></div></div>
+        <div class="two">
+          <div class="blk"><h3>Where the running cost goes <span class="sub" id="opexSub"></span></h3><div class="bars" id="opexBars"></div></div>
+          <div class="blk"><h3>CAPEX <span class="sub" id="capexSub"></span></h3><div class="bars" id="capexBars"></div><p class="note" id="benchNote"></p></div>
+        </div>
+        <div class="card"><div class="blk"><h3>Cumulative cash vs selling concentrate <span class="sub">$M, after tax</span></h3><div class="chart-box"><canvas id="cfChart"></canvas></div></div></div>
+        <details class="plain"><summary>Show both income statements</summary>
+          <div class="two">
+            <div class="blk"><h3>Selling concentrate <span class="sub">$M per year</span></h3><table class="ledger" id="ledBase"></table></div>
+            <div class="blk"><h3>Building the plant <span class="sub">$M per year</span></h3><table class="ledger" id="ledRacer"></table></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-co2" aria-labelledby="t-co2" hidden>
+        <p class="lead" id="co2Lead"></p>
+        <div class="card"><div class="blk"><h3>t CO₂e per t copper, by power source <span class="sub">dashed line is the smelter route</span></h3><div class="chart-box tall"><canvas id="co2Chart"></canvas></div></div></div>
+        <p class="note">Concentrate-to-cathode step only. Grid factors are approximate (Ember/IEA 2024). The smelter-route figure is an approximate smelting-and-refining share of published cathode footprints; verify before quoting.</p>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-risk" aria-labelledby="t-risk" hidden>
+        <p class="lead" id="riskLead"></p>
+        <div class="card"><div class="blk"><h3>Where the plant pays <span class="sub">NPV by smelter charge (x) and plant size (y)</span></h3>
+          <div class="heat-box" id="heatBox"><canvas id="heat" role="img" aria-label="Heatmap of NPV by smelter charge and plant size"></canvas><div class="heat-tip" id="heatTip" hidden></div></div>
+          <div class="key"><span><i style="background:var(--copper)"></i>NPV positive, build</span><span><i style="background:#5A6167"></i>NPV negative, sell</span><span><i style="background:var(--ink);border-radius:1px;height:2px;width:14px;vertical-align:3px"></i>break-even</span><span><i style="background:var(--ink)"></i>current case</span></div>
+          <p class="note" id="heatNote"></p></div></div>
+        <div class="two">
+          <div class="card"><div class="blk"><h3>What moves NPV most <span class="sub">each input ±20%</span></h3><div class="chart-box tall"><canvas id="torChart"></canvas></div><div class="key"><span><i style="background:var(--data-2)"></i>input −20%</span><span><i style="background:var(--copper)"></i>input +20%</span></div></div></div>
+          <div class="card"><div class="blk"><h3>NPV range, 2,000 runs <span class="sub">Monte Carlo</span></h3><div class="chart-box"><canvas id="mcChart"></canvas></div><div class="p-row" id="mcStats"></div><p class="note" id="mcNote"></p></div></div>
+        </div>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-method" aria-labelledby="t-method" hidden>
+        <div class="scope">
+          <p><b>Independent study.</b> Built from published academic research on vanadium(II) reductive leaching [1-3] and public press [4-6]. It is not any company's model and uses no company data. The commercial flowsheet, costs and pilot data are not public. Values marked <span class="badge a">A</span> are assumptions to replace with pilot and vendor data.</p>
+          <p>Engine checked against an independent Python calculation (validate.py). Mass and charge balances close within 0.1%. Prices are late-July 2026 [11].</p>
+        </div>
+        <div class="blk"><h3>Equations</h3><div class="eqs" id="eqs"></div></div>
+        <div class="blk"><h3>Monte Carlo ranges</h3><p class="note" id="mcRanges" style="margin-top:0"></p></div>
+        <details class="plain"><summary>Show every input and its basis</summary><div class="tbl-wrap"><table id="assTbl"></table></div></details>
+        <div class="blk"><h3>Sources</h3><ol class="refs" id="refs"></ol></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="row"><span>Copper Value Calculator. Independent study using public data. Prices as of 24 Jul 2026, values in 2026 USD.</span><span>Not investment advice</span></div>
+    <div>Photos: electrowinning plant, Arizona, by Cornelius M. Keyes, US National Archives (public domain). Chalcopyrite by Didier Descouens, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>. Copper cathode bundles by ChrisFountain, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>. All via Wikimedia Commons.</div>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
